@@ -1,0 +1,33 @@
+name: Scrape and Save HTML
+
+on:
+  # Schedule the action to run at a specific time (e.g., every day at midnight UTC)
+  schedule:
+    - cron: '0 0 * * *'
+  # Allow manual execution from the GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run scraper script
+        run: python scrape.py
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated: Scraped HTML from temp-number.com"
+          file_pattern: 'data/*.html'
