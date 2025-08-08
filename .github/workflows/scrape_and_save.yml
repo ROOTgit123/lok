@@ -1,4 +1,4 @@
-name: Scrape and Save HTML
+name: Scrape and Save Data
 
 on:
   # Schedule the action to run at a specific time (e.g., every day at midnight UTC)
@@ -28,19 +28,19 @@ jobs:
 
       - name: Add and Commit Scraped Data
         run: |
+          # Configure git with a bot user
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Use 'git add .' to add any new or modified files in the repository.
-          git add .
+          # Add any new or modified files in the 'data' directory
+          git add data/*.html data/*.json
           
-          # Check if there are any changes to commit.
-          # The '|| true' ensures the command doesn't cause the workflow to fail if there's nothing to commit.
+          # Check if there are any changes to commit
           if git diff --staged --quiet; then
-            echo "No changes to commit."
+            echo "No new files to commit."
           else
-            echo "Committing changes..."
-            git commit -m "Automated: Scraped HTML and JSON data from temp-number.com"
-            # Push the changes to the 'main' branch.
+            echo "Committing new files..."
+            git commit -m "Automated: Scraped HTML and JSON data"
+            # Push the changes to the 'main' branch
             git push
           fi
