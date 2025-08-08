@@ -20,7 +20,6 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        # This command reads the requirements.txt file and installs all packages listed inside it.
         run: |
           pip install -r requirements.txt
 
@@ -30,5 +29,6 @@ jobs:
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Automated: Scraped HTML from temp-number.com"
-          file_pattern: 'data/*.html'
+          commit_message: "Automated: Scraped HTML and JSON data from temp-number.com"
+          # This pattern is updated to include both HTML and JSON files.
+          file_pattern: 'data/*.html data/*.json'
