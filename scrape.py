@@ -66,6 +66,7 @@ def scrape_and_parse():
     if messages:
         json_filename = os.path.join(OUTPUT_DIR, f"messages_{timestamp}.json")
         with open(json_filename, 'w', encoding='utf-8') as f:
+            # The json.dump() function writes the Python list 'messages' to a file as a JSON array.
             json.dump(messages, f, ensure_ascii=False, indent=4)
         print(f"Successfully saved {len(messages)} messages to {json_filename}")
 
