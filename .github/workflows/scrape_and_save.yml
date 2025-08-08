@@ -32,8 +32,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Add any new or modified files in the 'data' directory
-          git add data/*.html data/*.json
+          # Add any new or modified files in the 'data' directory.
+          # The '|| true' ensures the command doesn't fail if no files match the pattern.
+          git add data/*.html || true
+          git add data/*.json || true
           
           # Check if there are any changes to commit
           if git diff --staged --quiet; then
