@@ -26,9 +26,21 @@ jobs:
       - name: Run scraper script
         run: python scrape.py
 
-      - name: Commit and push changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Automated: Scraped HTML and JSON data from temp-number.com"
-          # This pattern is updated to include both HTML and JSON files.
-          file_pattern: 'data/*.html data/*.json'
+      - name: Add and Commit Scraped Data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Use 'git add .' to add any new or modified files in the repository.
+          git add .
+          
+          # Check if there are any changes to commit.
+          # The '|| true' ensures the command doesn't cause the workflow to fail if there's nothing to commit.
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            echo "Committing changes..."
+            git commit -m "Automated: Scraped HTML and JSON data from temp-number.com"
+            # Push the changes to the 'main' branch.
+            git push
+          fi
