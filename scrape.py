@@ -24,7 +24,8 @@ def scrape_messages_from_html(file_path):
             html_content = f.read()
     except FileNotFoundError:
         print(f"Error: The file '{file_path}' was not found.")
-        return None
+        # Return a tuple of Nones to match the successful return signature
+        return None, None
 
     soup = BeautifulSoup(html_content, 'html.parser')
     
