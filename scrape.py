@@ -12,7 +12,7 @@ OUTPUT_DIR = "data"
 def scrape_and_parse():
     """
     Scrapes the URL, saves the raw HTML, and then parses the content
-    to save new messages to a JSON file.
+    to save messages to a JSON file.
     """
     print("Fetching HTML from the website...")
     try:
