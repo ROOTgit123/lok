@@ -1,5 +1,6 @@
 import os
 import cloudscraper
+import json
 from datetime import datetime
 from bs4 import BeautifulSoup
 
@@ -11,7 +12,7 @@ OUTPUT_DIR = "data"
 def scrape_and_parse():
     """
     Scrapes the URL, saves the raw HTML, and then parses the content
-    to print new messages to the console.
+    to save new messages to a JSON file.
     """
     print("Fetching HTML from the website...")
     try:
@@ -27,17 +28,18 @@ def scrape_and_parse():
     # Create the data directory if it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # Generate a timestamped filename and save the raw HTML content
+    # --- SAVE THE RAW HTML ---
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = os.path.join(OUTPUT_DIR, f"canada_number_{timestamp}.html")
-    with open(filename, "w", encoding="utf-8") as f:
+    html_filename = os.path.join(OUTPUT_DIR, f"canada_number_{timestamp}.html")
+    with open(html_filename, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print(f"Successfully saved full HTML to {filename}")
+    print(f"Successfully saved full HTML to {html_filename}")
 
-    # --- PARSE THE HTML TO FIND MESSAGES ---
+    # --- PARSE THE HTML AND SAVE MESSAGES TO JSON ---
     print("\n[SCANNER] Checking for messages within the scraped HTML...")
     soup = BeautifulSoup(html_content, 'html.parser')
-
+    messages = []
+    
     # Find all message elements using the same CSS selector from your JavaScript
     message_elements = soup.find_all('div', class_='direct-chat-msg left')
     
@@ -45,30 +47,27 @@ def scrape_and_parse():
         print('[SCANNER] No messages found on this page.')
         return
 
-    new_messages_found = 0
-    # Loop through each found message element
+    # Loop through each found message element and extract the data
     for msg_element in message_elements:
-        # Extract the elements we need
         sender_element = msg_element.find('span', class_='direct-chat-name')
         time_element = msg_element.find('span', class_='direct-chat-timestamp')
         text_element = msg_element.find('div', class_='direct-chat-text')
 
-        # Check if all required elements exist
+        # Check if all required elements exist before creating the message dictionary
         if sender_element and time_element and text_element:
-            sender = sender_element.get_text(strip=True) if sender_element else 'N/A'
-            message_time = time_element.get_text(strip=True) if time_element else 'N/A'
-            message_text = text_element.get_text(strip=True) if text_element else 'N/A'
+            message_data = {
+                'sender': sender_element.get_text(strip=True),
+                'time': time_element.get_text(strip=True),
+                'text': text_element.get_text(strip=True)
+            }
+            messages.append(message_data)
 
-            # This part is a simple print, as we can't use localStorage in Python.
-            # Each time the script runs, it will print all messages on the page.
-            new_messages_found += 1
-            print('---------------------')
-            print(f'From: {sender}')
-            print(f'Time: {message_time}')
-            print(f'Text: "{message_text}"')
-            print('---------------------')
-
-    print(f"\n[SCANNER] Found and printed {new_messages_found} total messages from the page.")
+    # Save the list of messages to a JSON file
+    if messages:
+        json_filename = os.path.join(OUTPUT_DIR, f"messages_{timestamp}.json")
+        with open(json_filename, 'w', encoding='utf-8') as f:
+            json.dump(messages, f, ensure_ascii=False, indent=4)
+        print(f"Successfully saved {len(messages)} messages to {json_filename}")
 
 
 # --- SCRIPT EXECUTION ---
