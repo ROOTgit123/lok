@@ -16,13 +16,22 @@ jobs:
         with:
           python-version: '3.10'
       - name: Install dependencies
-        # This command reads the requirements.txt file and installs all packages listed inside it.
         run: |
           pip install -r requirements.txt
+      - name: Create data directory if it doesn't exist
+        run: |
+          mkdir -p data
+          echo "# Data directory" > data/.gitkeep
       - name: Run scraper script
         run: python scrape.py
+      - name: Check for new files
+        run: |
+          git status
+          ls -la data/
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Automated: Scraped HTML and extracted JSON data from temp-number.com"
-          file_pattern: 'data/*.{html,json}'
+          file_pattern: |
+            data/*.html
+            data/*.json
