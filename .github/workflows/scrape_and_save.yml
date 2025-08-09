@@ -1,4 +1,4 @@
-name: Scrape and Save Data
+name: Scrape and Save HTML
 
 on:
   # Schedule the action to run at a specific time (e.g., every day at midnight UTC)
@@ -20,29 +20,15 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
+        # This command reads the requirements.txt file and installs all packages listed inside it.
         run: |
           pip install -r requirements.txt
 
       - name: Run scraper script
         run: python scrape.py
 
-      - name: Add and Commit Scraped Data
-        run: |
-          # Configure git with a bot user
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
-          # Add any new or modified files in the 'data' directory.
-          # The '|| true' ensures the command doesn't fail if no files match the pattern.
-          git add data/*.html || true
-          git add data/*.json || true
-          
-          # Check if there are any changes to commit
-          if git diff --staged --quiet; then
-            echo "No new files to commit."
-          else
-            echo "Committing new files..."
-            git commit -m "Automated: Scraped HTML and JSON data"
-            # Push the changes to the 'main' branch
-            git push
-          fi
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated: Scraped HTML from temp-number.com"
+          file_pattern: 'data/*.html'
