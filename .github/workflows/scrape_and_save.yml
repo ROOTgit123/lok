@@ -28,10 +28,12 @@ jobs:
         run: |
           git status
           ls -la data/
+      - name: Add files to git
+        run: |
+          git add data/
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Automated: Scraped HTML and extracted JSON data from temp-number.com"
-          file_pattern: |
-            data/*.html
-            data/*.json
+          skip_checkout: true
+          skip_dirty_check: true
