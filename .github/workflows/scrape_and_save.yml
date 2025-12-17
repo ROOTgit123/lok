@@ -1,46 +1,39 @@
 name: Scrape and Save HTML
-
 on:
-  workflow_dispatch:
+  # Schedule the action to run at a specific time (e.g., every day at midnight UTC)
   schedule:
     - cron: '0 0 * * *'
-
-permissions:
-  contents: write
-
+  # Allow manual execution from the GitHub Actions tab
+  workflow_dispatch:
 jobs:
   scrape:
     runs-on: ubuntu-latest
     env:
+      # Define the URL to scrape here. Easy to change!
       SCRAPE_URL: "https://temp-number.com/temporary-numbers/Canada/12262433061/1"
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # Use latest version
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run scraper every 10 seconds (30 times ≈ 5 min)
         run: |
-          for i in {1..30}; do
-            echo "Run #$i"
-            python scrape.py
-            sleep 10
-          done
+          pip install -r requirements.txt
 
-      - name: Show git status (debug)
-        run: |
-          git status
-          git diff --stat
+      - name: Run scraper script
+        run: python scrape.py
 
       - name: Commit and push changes
+        # This action will only commit if `git status` shows changes.
+        # If the new file is identical to the old one, no commit is made.
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Automated: Update scraped data"
-          file_pattern: 'data/**'
+          commit_message: "Automated: Update scraped data for phone ID from SCRAPE_URL"
+          # Be specific about which files to check for changes.
+          file_pattern: 'data/*.*'
+          skip_checkout: true
+          skip_dirty_check: true
