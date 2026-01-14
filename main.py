@@ -36,7 +36,6 @@ def setup_driver():
     return Driver(uc=True, headless=True, no_sandbox=True)
 
 def get_next_batch_number(dir1, dir2):
-    """Checks both folders to find the next available ID number."""
     os.makedirs(dir1, exist_ok=True)
     os.makedirs(dir2, exist_ok=True)
     i = 1
@@ -56,7 +55,6 @@ def generate_images(prompts):
     driver = setup_driver()
     base_url = "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
     
-    # Paths
     images_repo_dir = os.path.join(os.getcwd(), "images")
     remove_repo_dir = os.path.join(os.getcwd(), "remove")
     temp_raw = os.path.join(os.getcwd(), "temp_raw")
@@ -71,11 +69,13 @@ def generate_images(prompts):
         for i, prompt in enumerate(prompts):
             print(f"--- Processing {i+1}/{len(prompts)} ---")
             driver.get(base_url)
-            time.sleep(4)
+            time.sleep(5)
             try:
                 # Agree & Mode Switch
-                try: WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
+                try: 
+                    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
                 except: pass
+                
                 WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
                 
                 # Input Prompt
@@ -84,14 +84,13 @@ def generate_images(prompts):
                 
                 # Wait for result
                 start_time = time.time()
-                while time.time() - start_time < 100:
+                while time.time() - start_time < 120:
                     imgs = driver.find_elements(By.XPATH, "//img[contains(@src, 'data:image')]")
                     if imgs:
                         # 1. Save Original
                         raw_name = f"img_{i+1}.jpg"
                         raw_path = save_base64_image(imgs[-1].get_attribute("src"), raw_name, temp_raw)
-                        raw_files_list.append(raw_path)
-
+                        
                         # 2. Save Processed (No BG)
                         img_cv = cv2.imread(raw_path, cv2.IMREAD_UNCHANGED)
                         if img_cv is not None:
@@ -99,12 +98,20 @@ def generate_images(prompts):
                             out_name = f"gen_{i+1}.png"
                             out_path = os.path.join(temp_no_bg, out_name)
                             cv2.imwrite(out_path, no_bg)
-                            processed_files_list.append(out_path)
+                            
+                            # Verify they exist before adding to list
+                            if os.path.exists(raw_path): raw_files_list.append(raw_path)
+                            if os.path.exists(out_path): processed_files_list.append(out_path)
+                            
                             print(f"Saved both raw and transparent for {i+1}")
                         break
                     time.sleep(5)
             except Exception as e:
                 print(f"Error on {i+1}: {e}")
+
+        # Final check on file existence before zipping
+        raw_files_list = [f for f in raw_files_list if os.path.exists(f)]
+        processed_files_list = [f for f in processed_files_list if os.path.exists(f)]
 
         # ZIP TRACK 1: ORIGINALS
         if raw_files_list:
@@ -124,7 +131,6 @@ def generate_images(prompts):
 
     finally:
         driver.quit()
-
 
 if __name__ == "__main__":
     # Add your full list of prompts here
