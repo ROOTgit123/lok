@@ -9,9 +9,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 def setup_driver():
-    # uc=True enables Undetected Chromedriver to bypass bot detection
-    # headless=True is required for GitHub Actions
-    driver = Driver(uc=True, headless=True)
+    # uc=True: bypasses bot detection
+    # headless=True: runs without a GUI window
+    # no_sandbox: required for running as root/service in Linux
+    driver = Driver(uc=True, headless=True, no_sandbox=True)
     print("SeleniumBase Driver initialized successfully.")
     return driver
 
