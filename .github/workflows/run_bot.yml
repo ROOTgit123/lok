@@ -2,6 +2,11 @@ name: Generate Raw and NoBG Zips
 
 on:
   workflow_dispatch:
+    inputs:
+      prompts_list:
+        description: 'Paste your full prompt list here (e.g., my_prompts = ["a", "b"])'
+        required: true
+        type: string
 
 jobs:
   run-bot:
@@ -32,17 +37,18 @@ jobs:
         pip install seleniumbase selenium-stealth opencv-python-headless numpy
 
     - name: Execute Script
+      env:
+        USER_PROMPTS: ${{ github.event.inputs.prompts_list }}
       run: |
-        mkdir -p images
-        mkdir -p remove
+        mkdir -p images remove
         xvfb-run python main.py
 
     - name: Commit and Push
       run: |
         git config --global user.name "GitHub Action Bot"
         git config --global user.email "actions@github.com"
-        git pull origin main # Ensure we have latest batch numbers
-        git add images/*.zip
-        git add remove/*.zip
+        git pull origin main --rebase
+        git add images/*.zip || echo "No images zips"
+        git add remove/*.zip || echo "No remove zips"
         git commit -m "New batch: gen_${{ github.run_number }}" || echo "No changes"
         git push origin main
