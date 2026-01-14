@@ -3,6 +3,7 @@ import time
 import base64
 import zipfile
 import cv2
+import ast
 import numpy as np
 from seleniumbase import Driver
 from selenium.webdriver.common.by import By
@@ -31,6 +32,10 @@ def remove_background(image: np.ndarray, start_point: tuple, threshold: list) ->
     result[transparent, :3] = 0
     return result
 
+# --- UTILS ---
+def setup_driver():
+    return Driver(uc=True, headless=True, no_sandbox=True)
+
 def get_next_batch_number(dir1, dir2):
     os.makedirs(dir1, exist_ok=True)
     os.makedirs(dir2, exist_ok=True)
@@ -40,7 +45,7 @@ def get_next_batch_number(dir1, dir2):
     return i
 
 def generate_images(prompts):
-    driver = Driver(uc=True, headless=True, no_sandbox=True)
+    driver = setup_driver()
     base_url = "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
     
     # Absolute Paths
@@ -64,15 +69,18 @@ def generate_images(prompts):
             time.sleep(5)
             
             try:
-                # Basic UI Interaction
+                # Handle Agree Button
                 try: WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
                 except: pass
+                
+                # Switch to Image Mode
                 WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
                 
+                # Input Prompt
                 textarea = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea")))
                 textarea.send_keys(prompt + Keys.ENTER)
                 
-                # Capture Logic
+                # Wait for result
                 start_time = time.time()
                 while time.time() - start_time < 120:
                     imgs = driver.find_elements(By.XPATH, "//img[contains(@src, 'data:image')]")
@@ -90,37 +98,53 @@ def generate_images(prompts):
                             no_bg_path = os.path.join(temp_no_bg, f"no_bg_{i+1}.png")
                             cv2.imwrite(no_bg_path, no_bg)
                             
-                            # Double Check
                             if os.path.exists(raw_path): raw_files.append(raw_path)
                             if os.path.exists(no_bg_path): remove_files.append(no_bg_path)
-                            print(f"Verified: Raw and No-BG files created for {i+1}")
+                            print(f"Captured Image {i+1}")
                         break
                     time.sleep(5)
             except Exception as e:
                 print(f"Error on prompt {i+1}: {e}")
 
-        # ZIP ORIGINALS
+        # Final check on file lists
+        raw_files = [f for f in raw_files if os.path.exists(f)]
+        remove_files = [f for f in remove_files if os.path.exists(f)]
+
+        # Create Zips
         if raw_files:
             z_path = os.path.join(images_repo_dir, f"gen_{batch_num}.zip")
             with zipfile.ZipFile(z_path, 'w') as z:
                 for f in raw_files: z.write(f, os.path.basename(f))
             print(f"Created: {z_path}")
 
-        # ZIP REMOVED BG
         if remove_files:
             z_path = os.path.join(remove_repo_dir, f"remove_{batch_num}.zip")
             with zipfile.ZipFile(z_path, 'w') as z:
                 for f in remove_files: z.write(f, os.path.basename(f))
             print(f"Created: {z_path}")
-        else:
-            print("WARNING: No background-removed files found to zip!")
 
     finally:
         driver.quit()
 
 if __name__ == "__main__":
-    my_prompts = [
-        "Cute pixel art cat crying neon tears, white stroke, black background",
-        "Cute pixel art puppy with neon eyes, white stroke, black background"
-    ]
-    generate_images(my_prompts)
+    raw_input = os.getenv("USER_PROMPTS", "").strip()
+    if raw_input:
+        try:
+            # Clean string if it starts with my_prompts =
+            if "=" in raw_input:
+                list_data = raw_input.split("=", 1)[1].strip()
+            else:
+                list_data = raw_input
+            
+            # Convert string representation of list to actual list
+            my_prompts = ast.literal_eval(list_data)
+            
+            if isinstance(my_prompts, list):
+                print(f"Parsed {len(my_prompts)} prompts.")
+                generate_images(my_prompts)
+            else:
+                print("Error: Input is not a list.")
+        except Exception as e:
+            print(f"Parsing error: {e}")
+    else:
+        print("No prompts provided.")
