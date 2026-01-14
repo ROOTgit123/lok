@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 def setup_driver():
-    # optimized for GitHub Actions
+    # optimized for GitHub Actions (No GUI, bypasses bot detection)
     driver = Driver(uc=True, headless=True, no_sandbox=True)
     return driver
 
@@ -16,6 +16,7 @@ def save_base64_image(base64_str, filename, download_dir):
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
     
+    # Strip base64 metadata header
     if "," in base64_str:
         base64_str = base64_str.split(",")[1]
     
@@ -23,7 +24,7 @@ def save_base64_image(base64_str, filename, download_dir):
     try:
         with open(filepath, "wb") as f:
             f.write(base64.b64decode(base64_str))
-        print(f"Saved: {filepath}")
+        print(f"Successfully saved to repository: {filepath}")
         return True
     except Exception as e:
         print(f"Error saving {filename}: {e}")
@@ -33,49 +34,51 @@ def generate_images(prompts):
     base_url = "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
     driver = setup_driver()
     
-    # Path set specifically to 'images' folder in the repo
+    # Set path to the 'images' folder in your repo
     image_dir = os.path.join(os.getcwd(), "images")
 
     try:
         driver.get(base_url)
         
-        # Agree to Terms
+        # Handle initial 'Agree' button
         try:
             WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
         except: pass
 
-        # Switch to Image Mode
+        # Ensure we are in Image Mode
         try:
             WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
         except: pass
 
         for i, prompt in enumerate(prompts):
-            print(f"Processing: {prompt[:30]}...")
+            print(f"Generating Image {i+1}...")
             textarea = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "textarea")))
             textarea.send_keys(prompt + Keys.ENTER)
 
-            # Wait for image to appear
+            # Wait loop for the base64 image to render
             start_time = time.time()
             while time.time() - start_time < 90:
                 try:
                     img = driver.find_element(By.XPATH, "//img[contains(@src, 'data:image')]")
                     if img.is_displayed():
-                        save_base64_image(img.get_attribute("src"), f"gen_{i+1}_{int(time.time())}.jpg", image_dir)
+                        # Save with a timestamp to avoid overwriting files
+                        filename = f"gen_{int(time.time())}_{i+1}.jpg"
+                        save_base64_image(img.get_attribute("src"), filename, image_dir)
                         break
                 except: pass
-                time.sleep(4)
+                time.sleep(5)
             
-            # Reset for next prompt
-            driver.get(base_url) 
+            # Brief pause before next request
             time.sleep(2)
 
     finally:
         driver.quit()
 
 if __name__ == "__main__":
-    # Add your full list of prompts here
+    # Your prompt list
     my_prompts = [
         "Cute pixel art cat crying neon tears, white stroke, black background",
         "Cute pixel art puppy with neon eyes, white stroke, black background"
+        # Add the rest of your 30 prompts here
     ]
     generate_images(my_prompts)
