@@ -1,6 +1,7 @@
 import os
 import time
 import base64
+import zipfile
 from seleniumbase import Driver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -11,118 +12,86 @@ def setup_driver():
     driver = Driver(uc=True, headless=True, no_sandbox=True)
     return driver
 
-def save_base64_image(base64_str, filename, download_dir):
-    if not os.path.exists(download_dir):
-        os.makedirs(download_dir)
+def get_next_zip_name(directory):
+    """Finds the next available number for the zip file."""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    i = 1
+    while os.path.exists(os.path.join(directory, f"gen_{i}.zip")):
+        i += 1
+    return f"gen_{i}.zip"
+
+def save_base64_image(base64_str, filename, temp_dir):
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
     if "," in base64_str:
         base64_str = base64_str.split(",")[1]
-    filepath = os.path.join(download_dir, filename)
-    try:
-        with open(filepath, "wb") as f:
-            f.write(base64.b64decode(base64_str))
-        print(f"Successfully saved to repository: {filepath}")
-        return True
-    except Exception as e:
-        print(f"Error saving {filename}: {e}")
-    return False
+    filepath = os.path.join(temp_dir, filename)
+    with open(filepath, "wb") as f:
+        f.write(base64.b64decode(base64_str))
+    return filepath
 
 def generate_images(prompts):
     base_url = "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
     driver = setup_driver()
-    image_dir = os.path.join(os.getcwd(), "images")
+    
+    repo_images_dir = os.path.join(os.getcwd(), "images")
+    temp_folder = os.path.join(os.getcwd(), "temp_photos")
+    
+    saved_files = []
 
     try:
         for i, prompt in enumerate(prompts):
             print(f"--- Processing Image {i+1}/{len(prompts)} ---")
-            
-            # Refresh page every time to reset the chat and clear any overlays
             driver.get(base_url)
             time.sleep(3)
 
-            # 1. Handle 'Agree' button (if it appears)
             try:
-                agree_xpath = "//button[contains(text(), 'Agree and Continue')]"
-                WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, agree_xpath))).click()
-            except:
-                pass
-
-            # 2. Switch to Image Mode
-            try:
-                img_mode_xpath = "//button[contains(., 'New Image') or contains(., 'Create Image')]"
-                WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, img_mode_xpath))).click()
+                # Agree to terms
+                WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
+                # Switch to Image Mode
+                WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
                 time.sleep(2)
-            except Exception as e:
-                print(f"Note: Image mode button step skipped or failed: {e}")
-
-            # 3. Find the visible textarea
-            try:
-                # Use a more specific selector for the active chat input
-                textarea = WebDriverWait(driver, 15).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea"))
-                )
-                textarea.click() # Click first to focus
+                
+                # Input Prompt
+                textarea = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea")))
                 textarea.send_keys(prompt + Keys.ENTER)
-                print(f"Prompt sent for image {i+1}")
-            except Exception as e:
-                print(f"Error finding textarea for image {i+1}: {e}")
-                continue
-
-            # 4. Wait loop for image
-            start_time = time.time()
-            img_found = False
-            while time.time() - start_time < 100:
-                try:
-                    # Look for the image that contains base64 data
+                
+                # Wait for Image
+                start_time = time.time()
+                while time.time() - start_time < 100:
                     img_elements = driver.find_elements(By.XPATH, "//img[contains(@src, 'data:image')]")
                     if img_elements:
-                        # Take the last image generated in the chat
-                        target_img = img_elements[-1]
-                        if target_img.is_displayed():
-                            filename = f"gen_{int(time.time())}_{i+1}.jpg"
-                            save_base64_image(target_img.get_attribute("src"), filename, image_dir)
-                            img_found = True
-                            break
-                except:
-                    pass
-                time.sleep(5)
+                        path = save_base64_image(img_elements[-1].get_attribute("src"), f"img_{i+1}.jpg", temp_folder)
+                        saved_files.append(path)
+                        print(f"Captured image {i+1}")
+                        break
+                    time.sleep(5)
+            except Exception as e:
+                print(f"Error on prompt {i+1}: {e}")
 
-            if not img_found:
-                print(f"Timed out waiting for Image {i+1}")
+        # ZIP LOGIC
+        if saved_files:
+            zip_filename = get_next_zip_name(repo_images_dir)
+            zip_path = os.path.join(repo_images_dir, zip_filename)
+            
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for file in saved_files:
+                    zipf.write(file, os.path.basename(file))
+                    os.remove(file) # Delete the loose jpg after zipping
+            
+            print(f"Successfully created: {zip_path}")
+            if os.path.exists(temp_folder):
+                os.rmdir(temp_folder)
 
     finally:
         driver.quit()
 
 if __name__ == "__main__":
     my_prompts = [
- "Cute pixel art cat crying neon tears, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art puppy with neon glowing eyes, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art fox emitting neon aura, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art bunny with neon pink ears, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art baby bear holding a neon heart, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art owl with neon blue feathers, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art penguin with neon yellow bowtie, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art panda eating neon bamboo, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art squirrel with a neon glowing nut, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art bird with neon wings, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art mouse with neon cheese, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art otter floating with a neon stone, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art lamb with neon wool, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art piglet splashing in neon mud, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art hedgehog with neon spikes, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art baby dragon breathing neon fire, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art friendly monster with neon teeth, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art chibi character with neon sword, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art fairy with neon dust trail, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art sprite with neon leaf wings, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art kawaii creature with neon tentacles, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art star with neon twinkles, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art cloud raining neon drops, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art heart with a neon pulse, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art mushroom with neon spots, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art cupcake with neon frosting, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art strawberry with neon seeds, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art mini robot with neon circuits, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art cartoon character with neon glasses, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
-"Cute pixel art blob monster with neon internal glow, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3"
+        "Cute pixel art cat crying neon tears, white stroke, black background",
+        "Cute pixel art puppy with neon eyes, white stroke, black background",
+        "Cute pixel art fox emitting neon aura, white stroke, black background"
     ]
     generate_images(my_prompts)
