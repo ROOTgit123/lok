@@ -13,10 +13,8 @@ def setup_driver():
     return driver
 
 def get_next_zip_name(directory):
-    """Finds the next available number for the zip file."""
     if not os.path.exists(directory):
         os.makedirs(directory)
-    
     i = 1
     while os.path.exists(os.path.join(directory, f"gen_{i}.zip")):
         i += 1
@@ -38,38 +36,64 @@ def generate_images(prompts):
     
     repo_images_dir = os.path.join(os.getcwd(), "images")
     temp_folder = os.path.join(os.getcwd(), "temp_photos")
-    
     saved_files = []
 
     try:
         for i, prompt in enumerate(prompts):
             print(f"--- Processing Image {i+1}/{len(prompts)} ---")
             driver.get(base_url)
-            time.sleep(3)
+            time.sleep(5) # Give page extra time to load
 
+            # 1. Handle 'Agree' button (Safe Check)
             try:
-                # Agree to terms
-                WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
-                # Switch to Image Mode
-                WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
+                WebDriverWait(driver, 8).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))
+                ).click()
+                time.sleep(1)
+            except:
+                pass
+
+            # 2. Force Switch to Image Mode
+            try:
+                img_btn = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))
+                )
+                img_btn.click()
                 time.sleep(2)
-                
-                # Input Prompt
-                textarea = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea")))
+            except Exception as e:
+                print(f"Image mode button not clickable, trying to continue anyway...")
+
+            # 3. Input Prompt
+            try:
+                textarea = WebDriverWait(driver, 15).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea"))
+                )
+                textarea.click()
                 textarea.send_keys(prompt + Keys.ENTER)
-                
-                # Wait for Image
-                start_time = time.time()
-                while time.time() - start_time < 100:
+                print(f"Prompt {i+1} sent successfully.")
+            except Exception as e:
+                print(f"Failed to send prompt {i+1}: {e}")
+                continue
+
+            # 4. Wait for Image Result
+            start_time = time.time()
+            img_found = False
+            while time.time() - start_time < 110:
+                try:
                     img_elements = driver.find_elements(By.XPATH, "//img[contains(@src, 'data:image')]")
                     if img_elements:
+                        # Grab the latest image
                         path = save_base64_image(img_elements[-1].get_attribute("src"), f"img_{i+1}.jpg", temp_folder)
                         saved_files.append(path)
                         print(f"Captured image {i+1}")
+                        img_found = True
                         break
-                    time.sleep(5)
-            except Exception as e:
-                print(f"Error on prompt {i+1}: {e}")
+                except:
+                    pass
+                time.sleep(5)
+            
+            if not img_found:
+                print(f"Skipping image {i+1} due to timeout.")
 
         # ZIP LOGIC
         if saved_files:
@@ -79,19 +103,20 @@ def generate_images(prompts):
             with zipfile.ZipFile(zip_path, 'w') as zipf:
                 for file in saved_files:
                     zipf.write(file, os.path.basename(file))
-                    os.remove(file) # Delete the loose jpg after zipping
+                    if os.path.exists(file):
+                        os.remove(file)
             
-            print(f"Successfully created: {zip_path}")
-            if os.path.exists(temp_folder):
-                os.rmdir(temp_folder)
+            print(f"SUCCESS: Created {zip_filename} with {len(saved_files)} images.")
 
     finally:
         driver.quit()
 
 if __name__ == "__main__":
+    # Add your full list of prompts here
     my_prompts = [
         "Cute pixel art cat crying neon tears, white stroke, black background",
         "Cute pixel art puppy with neon eyes, white stroke, black background",
-        "Cute pixel art fox emitting neon aura, white stroke, black background"
+        "Cute pixel art fox emitting neon aura, white stroke, black background",
+        "Cute pixel art bunny with neon pink ears, white stroke, black background"
     ]
     generate_images(my_prompts)
