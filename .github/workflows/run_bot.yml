@@ -1,9 +1,7 @@
 name: Run DuckDuckGo Image Gen
 
 on:
-  workflow_dispatch: # Allows you to run it manually
-  schedule:
-    - cron: '0 0 * * *' # Optional: Runs daily at midnight
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,23 +16,18 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Install Chrome and Driver
+    - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
+        sudo apt-get install -y google-chrome-stable xvfb
+
+    - name: Install Python Dependencies
+    # We downgrade setuptools slightly to avoid the "use_2to3" error
+      run: |
+        python -m pip install --upgrade pip
+        pip install "setuptools<58.0.0" 
+        pip install seleniumbase selenium-stealth requests piexif beautifulsoup4
 
     - name: Run Script
-    # We use xvfb to simulate a display for the browser
       run: |
-        python main.py
-
-    - name: Upload Generated Images
-      uses: actions/upload-artifact@v4
-      with:
-        name: generated-images
-        path: upload/ # This matches your script's output folder
+        xvfb-run python main.py
