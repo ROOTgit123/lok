@@ -31,10 +31,6 @@ def remove_background(image: np.ndarray, start_point: tuple, threshold: list) ->
     result[transparent, :3] = 0
     return result
 
-# --- UTILS ---
-def setup_driver():
-    return Driver(uc=True, headless=True, no_sandbox=True)
-
 def get_next_batch_number(dir1, dir2):
     os.makedirs(dir1, exist_ok=True)
     os.makedirs(dir2, exist_ok=True)
@@ -43,85 +39,81 @@ def get_next_batch_number(dir1, dir2):
         i += 1
     return i
 
-def save_base64_image(base64_str, filename, temp_dir):
-    if not os.path.exists(temp_dir): os.makedirs(temp_dir)
-    if "," in base64_str: base64_str = base64_str.split(",")[1]
-    filepath = os.path.join(temp_dir, filename)
-    with open(filepath, "wb") as f:
-        f.write(base64.b64decode(base64_str))
-    return filepath
-
 def generate_images(prompts):
-    driver = setup_driver()
+    driver = Driver(uc=True, headless=True, no_sandbox=True)
     base_url = "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
     
-    images_repo_dir = os.path.join(os.getcwd(), "images")
-    remove_repo_dir = os.path.join(os.getcwd(), "remove")
-    temp_raw = os.path.join(os.getcwd(), "temp_raw")
-    temp_no_bg = os.path.join(os.getcwd(), "temp_no_bg")
+    # Absolute Paths
+    base_path = os.getcwd()
+    images_repo_dir = os.path.join(base_path, "images")
+    remove_repo_dir = os.path.join(base_path, "remove")
+    temp_raw = os.path.join(base_path, "temp_raw")
+    temp_no_bg = os.path.join(base_path, "temp_no_bg")
     
-    # Ensure repo directories exist immediately
-    os.makedirs(images_repo_dir, exist_ok=True)
-    os.makedirs(remove_repo_dir, exist_ok=True)
+    for d in [images_repo_dir, remove_repo_dir, temp_raw, temp_no_bg]:
+        os.makedirs(d, exist_ok=True)
     
     batch_num = get_next_batch_number(images_repo_dir, remove_repo_dir)
-    
-    raw_files_list = []
-    processed_files_list = []
+    raw_files = []
+    remove_files = []
 
     try:
         for i, prompt in enumerate(prompts):
             print(f"--- Processing {i+1}/{len(prompts)} ---")
             driver.get(base_url)
             time.sleep(5)
+            
             try:
-                try: 
-                    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
+                # Basic UI Interaction
+                try: WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
                 except: pass
-                
                 WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
                 
                 textarea = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea")))
                 textarea.send_keys(prompt + Keys.ENTER)
                 
+                # Capture Logic
                 start_time = time.time()
                 while time.time() - start_time < 120:
                     imgs = driver.find_elements(By.XPATH, "//img[contains(@src, 'data:image')]")
                     if imgs:
-                        raw_name = f"img_{i+1}.jpg"
-                        raw_path = save_base64_image(imgs[-1].get_attribute("src"), raw_name, temp_raw)
+                        # Save Raw
+                        b64data = imgs[-1].get_attribute("src").split(",")[1]
+                        raw_path = os.path.join(temp_raw, f"raw_{i+1}.jpg")
+                        with open(raw_path, "wb") as f:
+                            f.write(base64.b64decode(b64data))
                         
-                        img_cv = cv2.imread(raw_path, cv2.IMREAD_UNCHANGED)
+                        # Process Background
+                        img_cv = cv2.imread(raw_path)
                         if img_cv is not None:
                             no_bg = remove_background(img_cv, (2,2), [200,200,200])
-                            out_name = f"gen_{i+1}.png"
-                            out_path = os.path.join(temp_no_bg, out_name)
-                            cv2.imwrite(out_path, no_bg)
+                            no_bg_path = os.path.join(temp_no_bg, f"no_bg_{i+1}.png")
+                            cv2.imwrite(no_bg_path, no_bg)
                             
-                            if os.path.exists(raw_path): raw_files_list.append(raw_path)
-                            if os.path.exists(out_path): processed_files_list.append(out_path)
-                            
-                            print(f"Saved both raw and transparent for {i+1}")
+                            # Double Check
+                            if os.path.exists(raw_path): raw_files.append(raw_path)
+                            if os.path.exists(no_bg_path): remove_files.append(no_bg_path)
+                            print(f"Verified: Raw and No-BG files created for {i+1}")
                         break
                     time.sleep(5)
             except Exception as e:
-                print(f"Error on {i+1}: {e}")
+                print(f"Error on prompt {i+1}: {e}")
 
         # ZIP ORIGINALS
-        if raw_files_list:
-            gen_zip_path = os.path.join(images_repo_dir, f"gen_{batch_num}.zip")
-            with zipfile.ZipFile(gen_zip_path, 'w') as zipf:
-                for file in raw_files_list:
-                    zipf.write(file, os.path.basename(file))
-            print(f"Created Original Zip: {gen_zip_path}")
+        if raw_files:
+            z_path = os.path.join(images_repo_dir, f"gen_{batch_num}.zip")
+            with zipfile.ZipFile(z_path, 'w') as z:
+                for f in raw_files: z.write(f, os.path.basename(f))
+            print(f"Created: {z_path}")
 
-        # ZIP REMOVE BG
-        if processed_files_list:
-            rem_zip_path = os.path.join(remove_repo_dir, f"remove_{batch_num}.zip")
-            with zipfile.ZipFile(rem_zip_path, 'w') as zipf:
-                for file in processed_files_list:
-                    zipf.write(file, os.path.basename(file))
-            print(f"Created Background-Removed Zip: {rem_zip_path}")
+        # ZIP REMOVED BG
+        if remove_files:
+            z_path = os.path.join(remove_repo_dir, f"remove_{batch_num}.zip")
+            with zipfile.ZipFile(z_path, 'w') as z:
+                for f in remove_files: z.write(f, os.path.basename(f))
+            print(f"Created: {z_path}")
+        else:
+            print("WARNING: No background-removed files found to zip!")
 
     finally:
         driver.quit()
@@ -129,8 +121,6 @@ def generate_images(prompts):
 if __name__ == "__main__":
     my_prompts = [
         "Cute pixel art cat crying neon tears, white stroke, black background",
-        "Cute pixel art puppy with neon eyes, white stroke, black background",
-        "Cute pixel art fox emitting neon aura, white stroke, black background",
-        "Cute pixel art bunny with neon pink ears, white stroke, black background"
+        "Cute pixel art puppy with neon eyes, white stroke, black background"
     ]
     generate_images(my_prompts)
