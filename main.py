@@ -60,6 +60,10 @@ def generate_images(prompts):
     temp_raw = os.path.join(os.getcwd(), "temp_raw")
     temp_no_bg = os.path.join(os.getcwd(), "temp_no_bg")
     
+    # Ensure repo directories exist immediately
+    os.makedirs(images_repo_dir, exist_ok=True)
+    os.makedirs(remove_repo_dir, exist_ok=True)
+    
     batch_num = get_next_batch_number(images_repo_dir, remove_repo_dir)
     
     raw_files_list = []
@@ -71,27 +75,22 @@ def generate_images(prompts):
             driver.get(base_url)
             time.sleep(5)
             try:
-                # Agree & Mode Switch
                 try: 
                     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
                 except: pass
                 
                 WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
                 
-                # Input Prompt
                 textarea = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea")))
                 textarea.send_keys(prompt + Keys.ENTER)
                 
-                # Wait for result
                 start_time = time.time()
                 while time.time() - start_time < 120:
                     imgs = driver.find_elements(By.XPATH, "//img[contains(@src, 'data:image')]")
                     if imgs:
-                        # 1. Save Original
                         raw_name = f"img_{i+1}.jpg"
                         raw_path = save_base64_image(imgs[-1].get_attribute("src"), raw_name, temp_raw)
                         
-                        # 2. Save Processed (No BG)
                         img_cv = cv2.imread(raw_path, cv2.IMREAD_UNCHANGED)
                         if img_cv is not None:
                             no_bg = remove_background(img_cv, (2,2), [200,200,200])
@@ -99,7 +98,6 @@ def generate_images(prompts):
                             out_path = os.path.join(temp_no_bg, out_name)
                             cv2.imwrite(out_path, no_bg)
                             
-                            # Verify they exist before adding to list
                             if os.path.exists(raw_path): raw_files_list.append(raw_path)
                             if os.path.exists(out_path): processed_files_list.append(out_path)
                             
@@ -109,11 +107,7 @@ def generate_images(prompts):
             except Exception as e:
                 print(f"Error on {i+1}: {e}")
 
-        # Final check on file existence before zipping
-        raw_files_list = [f for f in raw_files_list if os.path.exists(f)]
-        processed_files_list = [f for f in processed_files_list if os.path.exists(f)]
-
-        # ZIP TRACK 1: ORIGINALS
+        # ZIP ORIGINALS
         if raw_files_list:
             gen_zip_path = os.path.join(images_repo_dir, f"gen_{batch_num}.zip")
             with zipfile.ZipFile(gen_zip_path, 'w') as zipf:
@@ -121,7 +115,7 @@ def generate_images(prompts):
                     zipf.write(file, os.path.basename(file))
             print(f"Created Original Zip: {gen_zip_path}")
 
-        # ZIP TRACK 2: REMOVE BG
+        # ZIP REMOVE BG
         if processed_files_list:
             rem_zip_path = os.path.join(remove_repo_dir, f"remove_{batch_num}.zip")
             with zipfile.ZipFile(rem_zip_path, 'w') as zipf:
@@ -133,7 +127,6 @@ def generate_images(prompts):
         driver.quit()
 
 if __name__ == "__main__":
-    # Add your full list of prompts here
     my_prompts = [
         "Cute pixel art cat crying neon tears, white stroke, black background",
         "Cute pixel art puppy with neon eyes, white stroke, black background",
