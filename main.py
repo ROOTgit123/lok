@@ -77,8 +77,35 @@ def generate_images(prompts):
 if __name__ == "__main__":
     # Your prompt list
     my_prompts = [
-        "Cute pixel art cat crying neon tears, white stroke, black background",
-        "Cute pixel art puppy with neon eyes, white stroke, black background"
-        # Add the rest of your 30 prompts here
+        "Cute pixel art cat crying neon tears, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art puppy with neon glowing eyes, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art fox emitting neon aura, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art bunny with neon pink ears, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art baby bear holding a neon heart, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art owl with neon blue feathers, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art penguin with neon yellow bowtie, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art panda eating neon bamboo, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art squirrel with a neon glowing nut, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art bird with neon wings, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art mouse with neon cheese, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art otter floating with a neon stone, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art lamb with neon wool, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art piglet splashing in neon mud, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art hedgehog with neon spikes, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art baby dragon breathing neon fire, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art friendly monster with neon teeth, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art chibi character with neon sword, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art fairy with neon dust trail, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art sprite with neon leaf wings, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art kawaii creature with neon tentacles, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art star with neon twinkles, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art cloud raining neon drops, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art heart with a neon pulse, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art mushroom with neon spots, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art cupcake with neon frosting, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art strawberry with neon seeds, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art mini robot with neon circuits, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art cartoon character with neon glasses, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3",
+"Cute pixel art blob monster with neon internal glow, glitch effect, script first desig same size with add whiite stroke to around design and keep black background --ar 2:3"
     ]
     generate_images(my_prompts)
