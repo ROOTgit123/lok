@@ -1,3 +1,9 @@
 requests
 cloudscraper
 beautifulsoup4
+selenium
+seleniumbase
+selenium-stealth
+piexif
+gspread
+PyYAML
