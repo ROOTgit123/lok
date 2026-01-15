@@ -7,6 +7,11 @@ on:
         description: 'Paste your full prompt list here (e.g., my_prompts = ["a", "b"])'
         required: true
         type: string
+      zip_number:
+        description: 'Enter the number for the ZIP file (e.g., 1, 2, 3)'
+        required: true
+        default: '1'
+        type: string
 
 jobs:
   run-bot:
@@ -39,6 +44,7 @@ jobs:
     - name: Execute Script
       env:
         USER_PROMPTS: ${{ github.event.inputs.prompts_list }}
+        ZIP_NUM: ${{ github.event.inputs.zip_number }}
       run: |
         mkdir -p images remove
         xvfb-run python main.py
@@ -50,5 +56,5 @@ jobs:
         git pull origin main --rebase
         git add images/*.zip || echo "No images zips"
         git add remove/*.zip || echo "No remove zips"
-        git commit -m "New batch: gen_${{ github.run_number }}" || echo "No changes"
+        git commit -m "Manual batch: ${{ github.event.inputs.zip_number }}" || echo "No changes"
         git push origin main
