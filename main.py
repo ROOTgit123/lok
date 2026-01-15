@@ -32,23 +32,13 @@ def remove_background(image: np.ndarray, start_point: tuple, threshold: list) ->
     result[transparent, :3] = 0
     return result
 
-# --- UTILS ---
 def setup_driver():
     return Driver(uc=True, headless=True, no_sandbox=True)
 
-def get_next_batch_number(dir1, dir2):
-    os.makedirs(dir1, exist_ok=True)
-    os.makedirs(dir2, exist_ok=True)
-    i = 1
-    while os.path.exists(os.path.join(dir1, f"gen_{i}.zip")) or os.path.exists(os.path.join(dir2, f"remove_{i}.zip")):
-        i += 1
-    return i
-
-def generate_images(prompts):
+def generate_images(prompts, batch_num):
     driver = setup_driver()
     base_url = "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
     
-    # Absolute Paths
     base_path = os.getcwd()
     images_repo_dir = os.path.join(base_path, "images")
     remove_repo_dir = os.path.join(base_path, "remove")
@@ -58,7 +48,6 @@ def generate_images(prompts):
     for d in [images_repo_dir, remove_repo_dir, temp_raw, temp_no_bg]:
         os.makedirs(d, exist_ok=True)
     
-    batch_num = get_next_batch_number(images_repo_dir, remove_repo_dir)
     raw_files = []
     remove_files = []
 
@@ -69,29 +58,23 @@ def generate_images(prompts):
             time.sleep(5)
             
             try:
-                # Handle Agree Button
                 try: WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Agree')]"))).click()
                 except: pass
                 
-                # Switch to Image Mode
                 WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Image')]"))).click()
                 
-                # Input Prompt
                 textarea = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "textarea")))
                 textarea.send_keys(prompt + Keys.ENTER)
                 
-                # Wait for result
                 start_time = time.time()
                 while time.time() - start_time < 120:
                     imgs = driver.find_elements(By.XPATH, "//img[contains(@src, 'data:image')]")
                     if imgs:
-                        # Save Raw
                         b64data = imgs[-1].get_attribute("src").split(",")[1]
                         raw_path = os.path.join(temp_raw, f"raw_{i+1}.jpg")
                         with open(raw_path, "wb") as f:
                             f.write(base64.b64decode(b64data))
                         
-                        # Process Background
                         img_cv = cv2.imread(raw_path)
                         if img_cv is not None:
                             no_bg = remove_background(img_cv, (2,2), [200,200,200])
@@ -106,11 +89,10 @@ def generate_images(prompts):
             except Exception as e:
                 print(f"Error on prompt {i+1}: {e}")
 
-        # Final check on file lists
+        # Final check and Zipping
         raw_files = [f for f in raw_files if os.path.exists(f)]
         remove_files = [f for f in remove_files if os.path.exists(f)]
 
-        # Create Zips
         if raw_files:
             z_path = os.path.join(images_repo_dir, f"gen_{batch_num}.zip")
             with zipfile.ZipFile(z_path, 'w') as z:
@@ -128,20 +110,21 @@ def generate_images(prompts):
 
 if __name__ == "__main__":
     raw_input = os.getenv("USER_PROMPTS", "").strip()
+    # Get the manual ZIP number from the environment variable
+    manual_zip_num = os.getenv("ZIP_NUM", "1")
+    
     if raw_input:
         try:
-            # Clean string if it starts with my_prompts =
             if "=" in raw_input:
                 list_data = raw_input.split("=", 1)[1].strip()
             else:
                 list_data = raw_input
             
-            # Convert string representation of list to actual list
             my_prompts = ast.literal_eval(list_data)
             
             if isinstance(my_prompts, list):
-                print(f"Parsed {len(my_prompts)} prompts.")
-                generate_images(my_prompts)
+                print(f"Parsed {len(my_prompts)} prompts. Batch number: {manual_zip_num}")
+                generate_images(my_prompts, manual_zip_num)
             else:
                 print("Error: Input is not a list.")
         except Exception as e:
