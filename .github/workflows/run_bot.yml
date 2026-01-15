@@ -53,8 +53,25 @@ jobs:
       run: |
         git config --global user.name "GitHub Action Bot"
         git config --global user.email "actions@github.com"
-        git pull origin main --rebase
+        
+        # 1. Stage the new files
         git add images/*.zip || echo "No images zips"
         git add remove/*.zip || echo "No remove zips"
-        git commit -m "Manual batch: ${{ github.event.inputs.zip_number }}" || echo "No changes"
-        git push origin main
+        
+        # 2. Commit (if there are changes)
+        git commit -m "Manual batch: ${{ github.event.inputs.zip_number }}" || exit 0
+        
+        # 3. Retry Loop to handle concurrent runs
+        for i in {1..5}; do
+          echo "Attempt $i to push..."
+          git pull origin main --rebase
+          if git push origin main; then
+            echo "Push successful!"
+            exit 0
+          fi
+          echo "Push failed due to conflict, retrying in 5 seconds..."
+          sleep 5
+        done
+        
+        echo "Failed to push after 5 attempts."
+        exit 1
