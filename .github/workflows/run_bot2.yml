@@ -1,4 +1,4 @@
-name: Generate Images Only
+name: Generate Images to Only Folder
 
 on:
   workflow_dispatch:
@@ -41,15 +41,15 @@ jobs:
         USER_PROMPTS: ${{ github.event.inputs.prompts_list }}
         ZIP_NUM: ${{ github.event.inputs.zip_number }}
       run: |
-        mkdir -p images
-        xvfb-run python main2.py
+        mkdir -p only
+        xvfb-run python main.py
 
     - name: Commit and Push
       run: |
         git config --global user.name "GitHub Action Bot"
         git config --global user.email "actions@github.com"
-        git add images/*.zip
-        git commit -m "Manual batch: ${{ github.event.inputs.zip_number }}" || exit 0
+        git add only/*.zip
+        git commit -m "Manual batch in only/: ${{ github.event.inputs.zip_number }}" || exit 0
         
         for i in {1..5}; do
           git pull origin main --rebase
