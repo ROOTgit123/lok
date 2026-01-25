@@ -3,7 +3,14 @@
     {
       "code": "PRO-12345",
       "active": true,
-      "expires": "2026-06-06"
+      "expires": "2026-06-05"
+    }
+  ]
+  "codes": [
+    {
+      "code": "PRO-12346",
+      "active": true,
+      "expires": "2026-06-07"
     }
   ]
 }
