@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  OUTPUT_FILE: data/roblox_codes.json
+  # UPDATED: Use the new filename from the combined scraper
+  OUTPUT_FILE: data/roblox_codes_and_images.json
 
 jobs:
   scrape:
