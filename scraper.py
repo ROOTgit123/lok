@@ -7,7 +7,7 @@ from playwright.async_api import async_playwright
 # Configuration
 LINKS_FILE = "links.txt"
 OUTPUT_DIR = "data"
-OUTPUT_FILE = os.path.join(OUTPUT_DIR, "roblox_codes.json")
+OUTPUT_FILE = os.path.join(OUTPUT_DIR, "roblox_codes_and_images.json")
 
 def clean_game_name(title):
     """Cleans the H1 title to get a simple game name."""
@@ -24,9 +24,6 @@ def clean_code(text):
     normalized_text = ' '.join(text.split())
     
     # 2. Use regex to find and split on the separator pattern: [whitespace][- or –][whitespace]
-    # This handles ' - ', ' – ', ' -', '- ', etc.
-    # The pattern r'\s*[-–]\s*' matches 0 or more spaces, followed by a hyphen (standard or en/em dash), 
-    # followed by 0 or more spaces.
     match = re.search(r'\s*[-–]\s*', normalized_text)
     
     if match:
@@ -37,15 +34,15 @@ def clean_code(text):
     return normalized_text.strip()
 
 async def scrape_article(page, url):
-    """Navigates to a single article and scrapes the game name and codes."""
+    """Navigates to a single article and scrapes the game name, codes, and main image URL."""
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
         
-        # 1. Extract Game Name
+        # --- 1. Extract Game Name ---
         h1_element = await page.locator('h1').first.inner_text()
         game_name = clean_game_name(h1_element)
         
-        # 2. Extract Codes
+        # --- 2. Extract Codes ---
         content_locator = page.locator('article, .entry-content, .article-content').first
         list_items = await content_locator.locator('ul li').all()
         
@@ -70,12 +67,29 @@ async def scrape_article(page, url):
 
         # Remove duplicates
         unique_codes = list(set(codes_found))
+
+        # --- 3. Extract Main Image URL ---
+        image_url = None
         
-        if game_name and unique_codes:
+        # Try to find the first image within the main content
+        image_locator = content_locator.locator('img').first
+        
+        if await image_locator.is_visible():
+            image_url = await image_locator.get_attribute('src')
+        
+        # Fallback: If the first image is an ad or icon, try a figure image
+        if not image_url or "logo" in image_url.lower() or "ad" in image_url.lower():
+            figure_img_locator = content_locator.locator('figure img').first
+            if await figure_img_locator.is_visible():
+                image_url = await figure_img_locator.get_attribute('src')
+        
+        
+        if game_name and (unique_codes or image_url):
             return {
                 "game": game_name,
                 "link": url,
-                "codes": unique_codes
+                "codes": unique_codes,
+                "image_url": image_url
             }
         
     except Exception as e:
@@ -95,7 +109,7 @@ async def main():
         print("No links found in links.txt. Exiting.")
         return
 
-    print(f"Starting scrape for {len(links)} articles...")
+    print(f"Starting combined scrape for {len(links)} articles...")
     
     scraped_data = []
     
