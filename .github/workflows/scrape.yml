@@ -1,0 +1,51 @@
+name: Daily Roblox Code Scraper
+
+on:
+  # Run every day at 00:00 UTC
+  schedule:
+    - cron: '0 0 * * *'
+  # Allows manual run from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # Fetch history to check for existing data file
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Run Scraper
+        id: scraper
+        run: python scraper.py
+        # Continue on error to allow for data persistence check
+        continue-on-error: true
+
+      - name: Check Scrape Result and Commit
+        run: |
+          # Check if the scraper run was successful and produced a non-empty file
+          if [ -s ${{ env.OUTPUT_FILE }} ]; then
+            echo "Scrape successful and file is not empty. Committing new data."
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add ${{ env.OUTPUT_FILE }}
+            git commit -m "🤖 Daily update: Roblox codes"
+            git push
+          else
+            echo "Scrape failed or produced an empty file. Preserving existing data."
+          fi
+        env:
+          OUTPUT_FILE: data/roblox_codes.json
