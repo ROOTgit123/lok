@@ -7,6 +7,9 @@ on:
   # Allows manual run from the Actions tab
   workflow_dispatch:
 
+env:
+  OUTPUT_FILE: data/roblox_codes.json
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -28,8 +31,12 @@ jobs:
           pip install playwright
           playwright install chromium
 
+      - name: Create data directory
+        run: mkdir -p data
+
       - name: Run Scraper
         id: scraper
+        # The script now handles the OUTPUT_FILE path correctly internally
         run: python scraper.py
         # Continue on error to allow for data persistence check
         continue-on-error: true
@@ -37,6 +44,7 @@ jobs:
       - name: Check Scrape Result and Commit
         run: |
           # Check if the scraper run was successful and produced a non-empty file
+          # -s checks if the file exists and has a size greater than zero
           if [ -s ${{ env.OUTPUT_FILE }} ]; then
             echo "Scrape successful and file is not empty. Committing new data."
             git config user.name github-actions
@@ -47,5 +55,3 @@ jobs:
           else
             echo "Scrape failed or produced an empty file. Preserving existing data."
           fi
-        env:
-          OUTPUT_FILE: data/roblox_codes.json
