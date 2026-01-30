@@ -16,12 +16,25 @@ def clean_game_name(title):
     return name.strip()
 
 def clean_code(text):
-    """Removes text after the first '-' or '–' separator."""
-    if ' - ' in text:
-        return text.split(' - ')[0].strip()
-    if ' – ' in text:
-        return text.split(' – ')[0].strip()
-    return text.strip()
+    """
+    Removes text after the first separator (e.g., ' - ', ' – ') and handles varied whitespace.
+    This is the fix for the filtering issue.
+    """
+    # 1. Normalize all whitespace (including \u00a0) to a single space
+    normalized_text = ' '.join(text.split())
+    
+    # 2. Use regex to find and split on the separator pattern: [whitespace][- or –][whitespace]
+    # This handles ' - ', ' – ', ' -', '- ', etc.
+    # The pattern r'\s*[-–]\s*' matches 0 or more spaces, followed by a hyphen (standard or en/em dash), 
+    # followed by 0 or more spaces.
+    match = re.search(r'\s*[-–]\s*', normalized_text)
+    
+    if match:
+        # Split at the position of the match
+        return normalized_text[:match.start()].strip()
+    
+    # Fallback: if no clear separator, return the normalized text
+    return normalized_text.strip()
 
 async def scrape_article(page, url):
     """Navigates to a single article and scrapes the game name and codes."""
@@ -33,10 +46,7 @@ async def scrape_article(page, url):
         game_name = clean_game_name(h1_element)
         
         # 2. Extract Codes
-        # Target the main content area to avoid sidebar/footer lists
         content_locator = page.locator('article, .entry-content, .article-content').first
-        
-        # Find all <li> elements within <ul> tags in the content area
         list_items = await content_locator.locator('ul li').all()
         
         codes_found = []
@@ -45,7 +55,7 @@ async def scrape_article(page, url):
             
             # Check if it looks like a code (contains bold/strong or a separator)
             is_bold = await li.locator('strong, b').count() > 0
-            has_separator = ' - ' in text or ' – ' in text
+            has_separator = ' - ' in text or ' – ' in text or '\u00a0-' in text
             
             if text and (is_bold or has_separator):
                 cleaned_code = clean_code(text)
@@ -90,7 +100,8 @@ async def main():
     scraped_data = []
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch()
+        # Use 'headless=True' for GitHub Actions environment
+        browser = await p.chromium.launch(headless=True) 
         page = await browser.new_page()
         
         for i, url in enumerate(links):
