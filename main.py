@@ -37,7 +37,7 @@ def setup_driver():
 
 def generate_images(prompts, batch_num):
     driver = setup_driver()
-    base_url = "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
+    base_url = "https://duck.ai/chat?duckai=1"
     
     base_path = os.getcwd()
     images_repo_dir = os.path.join(base_path, "images")
