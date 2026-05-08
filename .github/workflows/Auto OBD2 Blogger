@@ -1,0 +1,47 @@
+name: Auto OBD2 Blogger
+on:
+  workflow_dispatch:
+    inputs:
+      obd_code:
+        description: 'Enter OBD2 Code (e.g., P0420)'
+        required: true
+        type: string
+
+jobs:
+  build-and-post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable xvfb
+        pip install seleniumbase selenium-stealth google-generativeai google-api-python-client google-auth-oauthlib PyGithub
+
+    - name: Run Script
+      env:
+        GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+        BLOGGER_TOKEN: ${{ secrets.BLOGGER_TOKEN }}
+        BLOG_ID: "5968842906847838574"
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OBD_CODE: ${{ github.event.inputs.obd_code }}
+      run: |
+        mkdir -p only
+        xvfb-run python main.py
+
+    - name: Commit and Push Images
+      run: |
+        git config --global user.name "AutoBot-Mechanic"
+        git config --global user.email "bot@github.com"
+        git add only/*.jpg
+        git commit -m "Images for OBD2 Code: ${{ github.event.inputs.obd_code }}" || exit 0
+        git push
