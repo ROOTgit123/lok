@@ -32,7 +32,6 @@ jobs:
         GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
         BLOGGER_TOKEN: ${{ secrets.BLOGGER_TOKEN }}
         BLOG_ID: "5968842906847838574"
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         OBD_CODE: ${{ github.event.inputs.obd_code }}
       run: |
         mkdir -p only
