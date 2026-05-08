@@ -36,7 +36,7 @@ jobs:
         OBD_CODE: ${{ github.event.inputs.obd_code }}
       run: |
         mkdir -p only
-        xvfb-run python main.py
+        xvfb-run python main3.py
 
     - name: Commit and Push Images
       run: |
